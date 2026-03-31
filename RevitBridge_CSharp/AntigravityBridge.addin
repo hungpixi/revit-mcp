@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Antigravity MCP Bridge</Name>
+    <Assembly>RevitBridge.dll</Assembly>
+    <AddInId>8B80ACCC-64B6-4F29-B103-A2DBC948B01C</AddInId>
+    <FullClassName>RevitBridge.AntigravityApp</FullClassName>
+    <VendorId>Antigravity.IDE</VendorId>
+    <VendorDescription>Multi-Purpose AI Agent Add-in</VendorDescription>
+  </AddIn>
+</RevitAddIns>

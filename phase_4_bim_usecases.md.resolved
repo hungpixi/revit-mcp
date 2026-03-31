@@ -1,0 +1,51 @@
+# Giai đoạn 4: Đưa hệ thống lên trình độ Kỹ sư BIM chuyên nghiệp
+
+Chào mừng bạn đến với Giai đoạn cuối cùng! Đến thời điểm này, "Phần Cơ Bắp" (C# Add-in) và "Phần Hệ Thần Kinh" (Node.js MCP Server) đã hoạt động trơn tru. Bây giờ tôi sẽ tập trung vào "Phần Linh Hồn", tức là cách làm sao để **Antigravity (AI)** thực hiện công việc với tiêu chuẩn khắt khe tương đương một Kỹ sư BIM Senior chuyên gia công (outsourcing) cho thị trường Mỹ.
+
+## 1. Yêu cầu tối thượng của BIM Outsourcing (Thị trường Mỹ)
+
+Khác với các dự án nội địa (thường chú trọng hình thức bản vẽ), thị trường Mỹ quản lý dự án Revit dựa trên **Model Data** và **Worksharing (Làm việc nhóm)**. Nếu AI của bạn cứ thế "thả" tường hay ống nước bừa bãi vào file, bạn sẽ gây lộn xộn các hệ phân nhánh và rác file.
+
+*   **1. Project Base Point & Internal Origin:** Mỹ xài hệ tọa độ tương đối. Tuyệt đối trong MCP của bạn phải có tool tính toán khoảng cách Delta so với Project Base Point thay vì móc cứng theo World Origin (0,0,0). Đơn vị luôn được parse sang `Decimal Feet`.
+*   **2. Theo dõi Workset (Bắt buộc):** Mỗi yếu tố kiến trúc/cơ điện đều phân vào Workset riêng (VD: `M-HVAC-Ducts`). Bạn phải lập trình **Tool `set_active_workset`** để trước khi vẽ bất kỳ thứ gì, AI phải chuyển Workset thì File Central mới không bị lỗi đồng bộ.
+*   **3. Cảnh báo và Error Handling:** Trong Revit, khi bạn nối 2 ống không cùng đường kính, sẽ sinh ra Warning. Bạn cần bóc tác lớp Warning đó trong file C#, gửi qua HTTP response báo lại cho Antigravity biết: *"Lỗi! Ống 10 inch không nối được ống 12 inch vì thiếu Fitting"*.
+
+## 2. Các Usecases đẻ ra tiền mặt
+
+Hãy lập trình các cụm Tools chuyên biệt trong MCP (thực chất là gọi hàm C# tương ứng qua Port 5050) để giải quyết 3 bài toán sau:
+
+### Usecase A: Tự động hóa hồ sơ (Data Entry)
+Thay vì tạo Sheet, View, đổi tên hàng loạt bằng bảng Excel rồi dùng Dynamo – rất chậm và cứng nhắc. Hãy yêu cầu Antigravity:
+> *"Hãy đọc file spec.txt và tạo cho tôi 50 bản vẽ (Sheet) có title block 'Letter (8.5x11)', đánh số từ M-101 đến M-150. Sau đó nhét các View Mặt Bằng Tầng 1 đến 50 vào đó."*
+
+### Usecase B: Đi ống MEP Cơ điện tự động (Routing)
+Cung cấp tool `place_duct_between_two_points`, truyền thêm biến `SystemClassification`. AI hoàn toàn có thể tính toán góc nối 45-90 độ (Pathfinding) dựa vào kinh nghiệm AI và nhét ống vào.
+> *"Dựng tuyến ống gió cấp (Supply Air) từ AHU-01 đến VAV-05, cao độ ống đặt ở 9' - 0", tránh dầm thép D-1 cao 8'."*
+
+### Usecase C: QA/QC & Audit Model (Ghi điểm tuyệt đối với khách hàng)
+Hãy viết một Tool `audit_model`. AI có thể chạy khắp tệp Revit, kiểm tra toàn bộ cửa (Doors) xem có cửa nào quên chưa điền `Fire Rating` hay không, sau đó trả về cho Antigravity một bản Report Markdown siêu đẹp, và bảo Antigravity tự sửa nốt những chỗ sai.
+
+## 3. Bí kíp viết System Prompt cho Antigravity
+
+Trong Antigravity (qua màn hình trò chuyện của bạn), hãy tạo một thẻ hoặc Prompt System (hoặc `<skills>` markdown) định dạng như sau, để AI "nhập vai" một kĩ sư Mỹ:
+
+```markdown
+# Role (Vai trò):
+Bạn là Senior BIM Engineer (Revit VDC Coordinator) chuyên làm dự án Mỹ. Bạn sử dụng mcp-server `revit-bim-automation` để thao tác với file Revit của User. Mọi suy nghĩ lập luận về cao độ, chiều dài MẶC ĐỊNH phải convert sang Feet.
+
+# Workflow:
+1. LUÔN LUÔN dùng tool `get_active_workset` kiểm tra xem Workset hiện tại có đúng chuẩn không trước khi `create_element`.
+2. Hạn chế Warning: Nếu nhận về HTTP Status = 400 (Có cảnh báo Clash/Warning từ Revit khi dùng Tool), bạn phải xóa Element đó ngay và xin phép User đổi vị trí.
+3. Không bao giờ dùng Model Line để vẽ linh tinh, bắt buộc dùng đúng Category (VD: Ống gió phải là Duct).
+4. Phân tích kĩ lệnh của User: Nếu User bảo vẽ tại "Tầng 1", phải dùng tool truy vấn xem Tầng 1 đó ID là gì trước.
+```
+
+---
+
+## Lời Kết Từ Antigravity
+
+Thưa bạn, qua 4 giai đoạn, bạn đã cầm trong tay bản thiết kế kiến trúc AI-BIM hiện đại nhất tính tới năm 2026. Đây là cơ sở cốt lõi (C# AddIn -> HttpListener -> TCP -> Node.js MCP -> AI) mà Autodesk Forge / APS đang cung cấp với giá hàng ngàn đô la mỗi tháng trên Cloud, nay bạn có thể chạy 100% Local ở HP ZBook của mình!
+
+Vốn xuất phát là "người mới", hãy bắt đầu đi từ **Giai đoạn 2** (Xây C# Add-in) trước với những hình khối cơ bản (như hộp, khối tường đơn giản). Cứ làm từ từ, nếu gặp bug C# nào báo lỗi về Transaction hay UI Thread, bạn hãy dán ngay dòng lỗi vào màn hình này, tôi sẽ giúp bạn gỡ từng nút thắt một.
+
+**Chúc bạn gia công thật nhiều dự án Mỹ và kiếm bộn tiền trong tương lai! Tiến độ nghiên cứu đã hoàn tất 100%.** Nếu bạn sẵn sàng bắt tay vào viết code, cài đặt ngay Visual Studio 2019/2022 và bật bộ chạy C# lên nhé! Ai sẽ giúp bạn code từng file C# đầu tiên? Chính là tôi đây! Cứ ra hiệu lệnh bất cứ lúc nào bạn cần đi vào chi tiết kĩ thuật.

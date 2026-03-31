@@ -1,0 +1,32 @@
+# Node.js
+node_modules/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# C# / .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dll
+*.pdb
+*.exe
+
+# Specific to this project
+Thumbs.db
+RevitMCP_Node/dist/
+*.pdf
+RevitMCP_Node/out.txt
+*.rar
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*~

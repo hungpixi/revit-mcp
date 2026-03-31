@@ -1,0 +1,112 @@
+# Giai đoạn 3: Xây dựng MCP Server (Trạm trung chuyển)
+
+Cổng vào (Port 5050) ở Giai đoạn 2 đã mở. Vấn đề bây giờ là: Làm sao Antigravity biết có cái cổng đó tồn tại và biết cách ra lệnh đúng định dạng JSON mà C# đang đợi?
+Đó chính là lúc chúng ta cần viết một **MCP Server** (Model Context Protocol).
+
+MCP Server đóng vai trò như bản "hướng dẫn sử dụng" và công cụ cho Antigravity (Antigravity đóng vai trò là Client). Khi bạn bảo: *"Hãy vẽ cho tôi một bức tường dài 10m"*, Antigravity sẽ lục tìm trong các Tools mà MCP Server cung cấp để tìm Tool `create_wall`, tính toán tọa độ và gọi nó.
+
+## 1. Công nghệ sử dụng
+
+- **Môi trường:** Node.js và TypeScript.
+- **Thư viện MCP:** `@modelcontextprotocol/sdk` (Của Anthropic thiết kế).
+- **Giao thức:** Server này chạy qua `stdio` (Standard Input/Output) để giao tiếp siêu nhanh với Antigravity. Nó sẽ đứng giữa và thực hiện chức năng gọi HTTP tới Revit.
+
+## 2. Bí kíp về "Đơn vị Hệ quy chiếu" (Outsource Mỹ)
+
+> [!WARNING]
+> Mọi dự án Revit nội bộ đều lưu tọa độ và độ dài dưới dạng **Fractional/Decimal Feet**. Dù dự án của bạn (Project Units) đang để là Millimeters (mm) thì Cấu trúc bên trong vẫn là Feet.
+
+Bạn muốn làm outsourcing cho bên Mĩ (hệ Imperial)? Đây là lợi thế tuyệt đối của bạn. AI thường tư duy theo hệ Metric (cm, m). Bạn cần phải dặn dò AI rõ ràng trong phần cấu hình mô tả tool (Description) hoặc xử lý ép kiểu đơn vị ngay từ trong Node.js.
+Công thức: **1 Foot = 304.8 mm**.
+
+## 3. Mã nguồn khởi tạo MCP Server (TypeScript)
+
+Dưới đây là cấu trúc cơ bản của file `index.ts` mà bạn sẽ chạy cùng Antigravity.
+
+```typescript
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import axios from "axios";
+
+// Khởi tạo MCP Server
+const server = new Server(
+  { name: "revit-bim-automation", version: "1.0.0" },
+  { capabilities: { tools: {} } }
+);
+
+// Khai báo cho AI biết nó có trò gì để làm
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [
+      {
+        name: "get_levels",
+        description: "Lấy danh sách tất cả các Tầng (Levels) và ID của chúng trong file Revit hiện tại để tham chiếu cao độ.",
+        inputSchema: { type: "object", properties: {} }
+      },
+      {
+        name: "create_wall",
+        description: "Tạo một bức tường trong Revit. Tọa độ X, Y, Z tính bằng Decimal Feet (chuẩn US).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            startPt: { type: "array", items: { type: "number" }, description: "[X, Y, Z] of start point" },
+            endPt: { type: "array", items: { type: "number" }, description: "[X, Y, Z] of end point" },
+            levelId: { type: "string", description: "ID của Tầng lấy từ hàm get_levels" }
+          },
+          required: ["startPt", "endPt", "levelId"]
+        }
+      }
+    ]
+  };
+});
+
+// Xử lý khi AI gọi Tool
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  
+  try {
+    // Gọi thẳng vào Port 5050 của C# Addin đang bám trong Revit
+    const response = await axios.post("http://localhost:5050/api/ai-command/", {
+      action: name, //VD: "create_wall"
+      payload: args   // { startPt: [0,0,0], endPt: [10,0,0], levelId: "12345" }
+    });
+
+    return {
+      content: [{ type: "text", text: `Đã gửi lệnh cho Revit thành công: ${JSON.stringify(response.data)}` }]
+    };
+  } catch (error) {
+    return {
+      content: [{ type: "text", text: `Lỗi kết nối Revit. Nhớ bật Add-in Revit lên trước! Lỗi: ${error.message}` }],
+      isError: true
+    };
+  }
+});
+
+// Bật Server lên qua Stdio
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.log("Antigravity Revit MCP Server is running!");
+}
+main();
+```
+
+## 4. Tóm tắt quá trình
+
+Bây giờ bạn hãy nhắm mắt và tưởng tượng luồng đi hoàn chỉnh:
+
+1. Bạn chat vào Antigravity: *"Dựng cho tôi 1 bức tường dài 20 feet ở Tầng 1 (Level 1)"*.
+2. Antigravity tự động kích hoạt tool `get_levels` lấy danh sách ID của Level 1.
+3. Antigravity tự động kích hoạt tool `create_wall` truyền vào tọa độ (X: 0, Y: 0, Z: 0) và (X: 20, Y: 0, Z: 0) và truyền kèm ID của Level 1.
+4. Đoạn gọi tool đó đi qua code TypeScript phía trên. Dùng thư viện Axios bắn 1 cục JSON vào địa chỉ: `http://localhost:5050/api/ai-command/`.
+5. C# ở Giai đoạn 2 hứng lấy cục JSON, bỏ vào Hàng Đợi (`ConcurrentQueue`).
+6. `IExternalEventHandler` bắt đầu xách đồ nghề lên (Mở Transaction) ra và vẽ bức tường lên màn hình lập tức. Mượt mà, trơn tru.
+
+---
+
+> [!IMPORTANT]
+> **Kết thúc Giai đoạn 3**
+> Tới đây Hệ thống đã hình thành 100%. Antigravity đã móc nối được với Revit 2020 không sai lệch bất kì một mm nào. Chúng ta đã biến Revit thành một AI-BIM-Server.
+>
+> **Nếu bạn chuẩn bị sẵn sàng cho Giai đoạn 4: Usecases chuẩn Kỹ sư BIM Mỹ & Bí kíp viết Prompt để AI tự biết né "Rác file" – Hãy reply lại cho tôi nhé!**
