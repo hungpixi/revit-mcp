@@ -52,13 +52,15 @@ By running a local HTTP server inside a native C# Revit Add-in, we decoupling th
 
 ## 🛠️ Installation
 
-Getting started requires two steps: setting up the Node.js MCP Server and installing the native Revit Add-in.
+Getting started requires manual setup because of binary dependencies (C# DLLs and Revit environment paths).
 
-1. **Clone the Companion Code:** Pull the [Revit MCP Bridge Repository](#) to your local machine (`d:\CODE\revit-mcp\`).
-2. **Setup the Node Server:** 
-   Navigate to `/RevitMCP_Node/` and run `install.bat`. This builds the TypeScript MCP interface.
-3. **Install the C# Add-in:**
-   Compile the Visual Studio Project in `/RevitBridge_CSharp/` (target: `.NET Framework 4.7.2` mapping to your `RevitAPI.dll`). Copy `AntigravityBridge.addin` and the compiled `.dll` to `C:\ProgramData\Autodesk\Revit\Addins\2020\`.
+> [!CAUTION]
+> **PLEASE READ THE DETAILED [SETUP GUIDE](SETUP_GUIDE.md) BEFORE STARTING.**
+> Cloning this repository alone will NOT work without building the C# project and installing the Revit Manifest.
+
+1. **Clone the Companion Code:** Pull this repository to `d:\CODE\revit-mcp\`.
+2. **Build & Install C# Bridge:** Navigate to `/RevitBridge_CSharp/`, build the `.csproj`, and copy the `.dll` + `.addin` to your Revit Add-ins folder (`C:\ProgramData\Autodesk\Revit\Addins\2020\`).
+3. **Setup the Node Server:** Navigate to `/RevitMCP_Node/`, run `npm install`, then `npm run build`.
 
 ---
 
