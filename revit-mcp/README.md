@@ -87,6 +87,68 @@ Edit `claude_desktop_config.json`:
 
 Install and run the companion [Revit MCP Plugin](https://github.com/revit-mcp/revit-mcp-plugin) in your Revit environment.
 
+## ✅ Revit 2020 Deliverable Progress (WiseBIM @CAD → BIM)
+
+This repository is being actively adapted and tested against **Autodesk Revit 2020** to deliver an end-to-end automation pipeline:
+
+- **PDF binder → Materials/Types**: parse finish/spec codes (FT/GT/P) and create Revit materials/types.
+- **DWG CAD → Multi-level model**: link DWGs, extract real CAD layers/entities, generate walls/openings, then QA + documentation + exports.
+
+### Current status (as of 2026-05-05)
+
+- **Revit 2020 add-in connectivity**: ✅ `ping` and `say_hello` confirmed.
+- **PDF-to-BIM**: ✅ materials/types created successfully (evidence captured locally).
+- **Levels**: ✅ Basement/Floor1/Floor2/Floor3/Roof created.
+- **CAD linking**: ✅ native `link_cad_files` command implemented for Revit 2020 (requires Revit restart to load updated DLLs).
+- **CAD extraction**: ✅ `get_cad_entities` and `get_layers` upgraded to read **real GraphicsStyle layer names** and output coordinates in **mm**.
+
+### Quick refs
+
+- **Level mapping + CAD pack summary**: see [`QUICK_SUMMARY.md`](../QUICK_SUMMARY.md)
+- **CAD integration notes**: see [`PHASE1.5_INTEGRATION_GUIDE.md`](../PHASE1.5_INTEGRATION_GUIDE.md)
+
+## 🧠 Design reasoning (token-efficient automation)
+
+The system is intentionally split so the AI uses tokens only where it adds value:
+
+- **Deterministic ops (no AI)**:
+  - link CAD (`link_cad_files`)
+  - extract layers/entities (`get_layers`, `get_cad_entities`)
+  - create Revit elements (`create_*`)
+  - export/schedules (`create_schedule`, `create_view_sheet`, `export_model`)
+- **AI-assisted ops (minimal tokens)**:
+  - map CAD layer naming → wall/opening classification
+  - infer door/window mapping when CAD blocks are inconsistent
+  - generate QA checks (counts, outliers) and propose fixes
+
+This keeps runs repeatable and cheap: once the layer→element mapping is stable, the pipeline is effectively “no-AI”.
+
+## 🤖 Toward 100% automation (no manual Revit clicks)
+
+Why you still sometimes open Revit manually: the add-in’s MCP socket exists **only after Revit starts and loads the add-in**.
+
+The roadmap to fully automated runs on Windows:
+
+1. **Launcher (outside Revit)**: start `Revit.exe`, optionally open a project, then wait for the MCP port to be ready.
+2. **Pipeline runner**: execute the full workflow via JSON-RPC scripts:
+   - `link_cad_files` → `get_layers/get_cad_entities` → `create_line_based_element` (walls) → openings → QA → docs/export.
+3. **Optimization**: cache mapping results to avoid repeated exploration prompts (token savings).
+
+### Included helper: start Revit and wait for MCP port
+
+From repo root:
+
+```powershell
+cd D:\\CODE\\revit-mcp
+.\\start-revit-and-wait.ps1
+```
+
+Or open a specific RVT:
+
+```powershell
+.\\start-revit-and-wait.ps1 -ProjectPath \"D:\\path\\to\\your.rvt\"
+```
+
 ## 📖 Usage Guide
 
 ### 🤖 AI Commands Examples
@@ -398,38 +460,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for the BIM and AI communities**
 
-*Transforming how we design, build, and manage the built environment* 🏗️🤖
-				CommandExecute
-			end
-	end
-```
-
-## Supported Tools
-
-| Name | Description |
-| ---- | ----------- |
-| get_current_view_info | Get current active view info |
-| get_current_view_elements | Get elements from the current active view |
-| get_available_family_types | Get available family types in current project |
-| get_selected_elements | Get currently selected elements |
-| get_material_quantities | Calculate material quantities and takeoffs |
-| ai_element_filter | Intelligent element querying tool for AI assistants |
-| analyze_model_statistics | Analyze model complexity with element counts |
-| create_point_based_element | Create point-based elements (door, window, furniture) |
-| create_line_based_element | Create line-based elements (wall, beam, pipe) |
-| create_surface_based_element | Create surface-based elements (floor, ceiling, roof) |
-| create_grid | Create a grid system with smart spacing generation |
-| create_level | Create levels at specified elevations |
-| create_room | Create and place rooms at specified locations |
-| create_structural_framing_system | Create a structural beam framing system |
-| delete_element | Delete elements by ID |
-| operate_element | Operate on elements (select, setColor, hide, etc.) |
-| color_elements | Color elements based on a parameter value |
-| tag_all_walls | Tag all walls in the current view |
-| tag_all_rooms | Tag all rooms in the current view |
-| export_room_data | Export all room data from the project |
-| store_project_data | Store project metadata in local database |
-| store_room_data | Store room metadata in local database |
-| query_stored_data | Query stored project and room data |
-| send_code_to_revit | Send C# code to Revit to execute |
-| say_hello | Display a greeting dialog in Revit (connection test) |
+*Transforming how we design, build, and manage the built environment*
