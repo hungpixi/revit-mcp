@@ -1,32 +1,38 @@
-# Node.js
-node_modules/
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# C# / .NET
-[Bb]in/
-[Oo]bj/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-*.dll
-*.pdb
-*.exe
-
-# Specific to this project
-Thumbs.db
-RevitMCP_Node/dist/
+# Binary project files - too large for git, use Git LFS or cloud storage
+CAD/
+IMAGE/
+PDF/
 *.pdf
-RevitMCP_Node/out.txt
-*.rar
+*.dwg
+*.dwl
+*.dwl2
+*.rvt
+*.rfa
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+*.webp
+thumbnails/
 
-# IDE / Editor
-.vscode/
-.idea/
-*.swp
-*~
+# WiseBIM folder (empty reference dir)
+WiseBIM AI for Autodesk® Revit®/
+
+# Node.js
+revit-mcp/node_modules/
+revit-mcp/build/
+revit-mcp/revit-data.db
+revit-mcp/.claude
+
+# C# build output
+RevitPlugin/bin/
+RevitPlugin/obj/
+RevitPlugin/*.user
+
+# Misc
+*.resolved
+node_out.txt
+phase3_result.txt
+screen_revit.png
+result_*.txt

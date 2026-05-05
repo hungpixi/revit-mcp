@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>RevitMCP.Handlers</AssemblyName>
+    <RootNamespace>RevitMCP.Handlers</RootNamespace>
+    <LangVersion>10</LangVersion>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <!--
+    ========================================================
+    Trỏ đến thư mục cài đặt Revit (thay đổi path theo máy)
+    ========================================================
+    Revit 2024: C:\Program Files\Autodesk\Revit 2024\
+    Revit 2025: C:\Program Files\Autodesk\Revit 2025\
+  -->
+  <PropertyGroup>
+    <RevitDir>C:\Program Files\Autodesk\Revit 2025</RevitDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitDir)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitDir)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>
