@@ -34,10 +34,20 @@ namespace RevitMCP.Handlers
                     "get_cad_block_info"        => new GetCADBlockInfoHandler(_doc).Execute(parameters),
                     "convert_cad_to_family"     => new ConvertCADToFamilyHandler(_doc).Execute(parameters),
 
+                    // ─── Level & Grid Tools (Phase 2A) ───────────────────────────
+                    "create_level"              => new CreateLevelHandler(_doc).Execute(parameters),
+                    "create_grid"               => new CreateGridHandler(_doc).Execute(parameters),
+                    "create_grid_intersections" => new GridIntersectionHandler(_doc).Execute(parameters),
+
+                    // ─── Element Query Tools (Phase 2B) ──────────────────────────
+                    "get_current_view_elements" => new GetCurrentViewElementsHandler(_doc).Execute(parameters),
+                    "get_selected_elements"     => new GetSelectedElementsHandler(_doc).Execute(parameters),
+                    "get_element_properties"    => new GetElementPropertiesHandler(_doc).Execute(parameters),
+                    "analyze_model_statistics"  => new AnalyzeModelStatisticsHandler(_doc).Execute(parameters),
+
                     // ─── Existing Handlers ────────────────────────────────────────
                     "create_brick_component"    => new BrickComponentHandler(_doc).Execute(parameters),
                     "modify_element"            => new ModifyElementHandler(_doc).Execute(parameters),
-                    "get_element_parameters"    => new GetElementParametersHandler(_doc).Execute(parameters),
                     "set_element_parameters"    => new SetElementParametersHandler(_doc).Execute(parameters),
                     "search_modules"            => new SearchModulesHandler(_doc).Execute(parameters),
                     "create_view_sheet"         => new CreateViewSheetHandler(_doc).Execute(parameters),
