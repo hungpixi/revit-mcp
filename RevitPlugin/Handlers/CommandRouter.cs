@@ -27,6 +27,14 @@ namespace RevitMCP.Handlers
             {
                 return method switch
                 {
+                    // ─── CAD Import Tools (Phase 1.5) ─────────────────────────────
+                    "get_file_info"             => new GetFileInfoHandler(_doc).Execute(parameters),
+                    "get_cad_entities"          => new GetCADEntitiesHandler(_doc).Execute(parameters),
+                    "get_layers"                => new GetLayersHandler(_doc).Execute(parameters),
+                    "get_cad_block_info"        => new GetCADBlockInfoHandler(_doc).Execute(parameters),
+                    "convert_cad_to_family"     => new ConvertCADToFamilyHandler(_doc).Execute(parameters),
+
+                    // ─── Existing Handlers ────────────────────────────────────────
                     "create_brick_component"    => new BrickComponentHandler(_doc).Execute(parameters),
                     "modify_element"            => new ModifyElementHandler(_doc).Execute(parameters),
                     "get_element_parameters"    => new GetElementParametersHandler(_doc).Execute(parameters),
