@@ -31,7 +31,7 @@ namespace RevitMCPPlugin.Commands
         public sealed class ScriptGlobals
         {
             public Document doc        { get; set; }
-            public JObject  parameters { get; set; }
+            public JToken   parameters { get; set; }
 
             // Convenience helpers available in scripts
             public static double MmToFeet(double mm) => mm / 304.8;
@@ -91,7 +91,11 @@ namespace RevitMCPPlugin.Commands
                 return Error("compilation", "No code provided in 'code' parameter");
 
             int timeoutSec = @params["timeout"]?.Value<int>() ?? 30;
-            JObject scriptParams = @params["parameters"] as JObject ?? new JObject();
+            JToken scriptParams = @params.TryGetValue("parameters", out JToken tok) ? tok : new JArray();
+            if (scriptParams == null)
+                scriptParams = new JArray();
+            if (!(scriptParams is JArray) && !(scriptParams is JObject))
+                scriptParams = new JArray();
 
             App.Log($"CodeExecution: running {userCode.Length} chars of code");
 
@@ -124,7 +128,7 @@ namespace RevitMCPPlugin.Commands
                 if (task.IsFaulted)
                 {
                     Exception inner = task.Exception?.InnerException ?? task.Exception;
-                    App.Log($"CodeExecution runtime error: {inner?.Message}");
+                    App.Log($"CodeExecution runtime error: {inner?.GetType().Name}: {inner?.Message}");
                     return Error("runtime", inner?.Message ?? "Unknown runtime error");
                 }
 
@@ -184,7 +188,7 @@ namespace RevitMCPPlugin.Commands
 // ── Auto-generated script preamble ────────────────────────────────
 // Helpers available:
 //   doc            : Autodesk.Revit.DB.Document
-//   parameters     : Newtonsoft.Json.Linq.JObject
+//   parameters     : Newtonsoft.Json.Linq.JToken (JArray or JObject)
 //   MmToFeet(mm)   : double
 //   FeetToMm(ft)   : double
 //   Collect(cat)   : IList<Element>

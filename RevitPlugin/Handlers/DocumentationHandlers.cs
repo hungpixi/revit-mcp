@@ -164,67 +164,9 @@ namespace RevitMCP.Handlers
                     }
                 }
 
-                // Filters
-                var filters = parameters["filters"] as JArray;
-                if (filters != null)
-                {
-                    foreach (JObject f in filters)
-                    {
-                        string fname = f["field"]?.Value<string>();
-                        string op    = f["operator"]?.Value<string>() ?? "equals";
-                        string fval  = f["value"]?.Value<string>() ?? "";
-
-                        var sf = availableFields.FirstOrDefault(af =>
-                            af.GetName(_doc).Equals(fname, StringComparison.OrdinalIgnoreCase));
-                        if (sf == null) continue;
-
-                        var filterType = op switch
-                        {
-                            "equals"      => ScheduleFilterType.Equal,
-                            "not_equals"  => ScheduleFilterType.NotEqual,
-                            "contains"    => ScheduleFilterType.Contains,
-                            "greater"     => ScheduleFilterType.GreaterThan,
-                            "less"        => ScheduleFilterType.LessThan,
-                            "begins_with" => ScheduleFilterType.BeginsWith,
-                            _             => ScheduleFilterType.Equal
-                        };
-
-                        def.AddFilter(new ScheduleFilter(def.GetFieldIndex(def.AddField(sf)), filterType, fval));
-                    }
-                }
-
-                // Sort
-                var sorts = parameters["sortBy"] as JArray;
-                if (sorts != null)
-                {
-                    foreach (JObject s in sorts)
-                    {
-                        string sname = s["field"]?.Value<string>();
-                        bool asc     = s["ascending"]?.Value<bool>() ?? true;
-                        var sf = availableFields.FirstOrDefault(af =>
-                            af.GetName(_doc).Equals(sname, StringComparison.OrdinalIgnoreCase));
-                        if (sf == null) continue;
-                        def.AddSortGroupField(new ScheduleSortGroupField(
-                            def.GetFieldIndex(def.AddField(sf)),
-                            asc ? ScheduleSortOrder.Ascending : ScheduleSortOrder.Descending
-                        ));
-                    }
-                }
-
-                // Group by
-                string groupBy = parameters["groupBy"]?.Value<string>();
-                if (groupBy != null)
-                {
-                    var sf = availableFields.FirstOrDefault(af =>
-                        af.GetName(_doc).Equals(groupBy, StringComparison.OrdinalIgnoreCase));
-                    if (sf != null)
-                    {
-                        var sgf = new ScheduleSortGroupField(def.GetFieldIndex(def.AddField(sf)));
-                        sgf.ShowHeader = true;
-                        sgf.ShowFooter = showTotals;
-                        def.AddSortGroupField(sgf);
-                    }
-                }
+                // Filters / Sort / Group-by
+                // Revit 2020 schedule filter/sort APIs differ by field id types.
+                // For stability, we currently skip these optional enhancements.
 
                 tx.Commit();
 

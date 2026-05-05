@@ -31,7 +31,7 @@ namespace RevitMCP.Handlers
                 // Get current view
                 View currentView = _doc.ActiveView;
                 if (currentView == null)
-                    return Error("No active view found");
+                    return HandlerResponse.Error("No active view found");
 
                 var categoryNames = categories?.Cast<JToken>()
                     .Select(t => t.Value<string>())
@@ -85,7 +85,7 @@ namespace RevitMCP.Handlers
                     count++;
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["viewName"] = currentView.Name,
                     ["elementCount"] = count,
@@ -98,7 +98,7 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error getting view elements: {ex.Message}");
+                return HandlerResponse.Error($"Error getting view elements: {ex.Message}");
             }
         }
     }
@@ -124,10 +124,16 @@ namespace RevitMCP.Handlers
                 bool includeParams = parameters["includeParameters"]?.Value<bool>() ?? false;
 
                 var selectedElements = new JArray();
-                ICollection<ElementId> selected = _doc.Selection.GetElementIds();
+                var idTokens = parameters["elementIds"] as JArray;
+                if (idTokens == null || idTokens.Count == 0)
+                    return HandlerResponse.Error("elementIds (int[]) is required for get_selected_elements in document-only context");
+
+                var selected = idTokens
+                    .Select(t => new ElementId(t.Value<int>()))
+                    .ToList();
 
                 if (selected.Count == 0)
-                    return Error("No elements selected");
+                    return HandlerResponse.Error("No elements selected");
 
                 foreach (ElementId elemId in selected)
                 {
@@ -151,7 +157,7 @@ namespace RevitMCP.Handlers
                             elemData["geometry"] = new JObject
                             {
                                 ["boundingBox"] = ExtractBoundingBox(geom),
-                                ["hasGeometry"] = geom != null && geom.Count > 0
+                                ["hasGeometry"] = geom != null
                             };
                         }
                         catch { }
@@ -177,7 +183,7 @@ namespace RevitMCP.Handlers
                     selectedElements.Add(elemData);
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["selectionCount"] = selectedElements.Count,
                     ["selectedElements"] = selectedElements
@@ -185,7 +191,7 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error getting selected elements: {ex.Message}");
+                return HandlerResponse.Error($"Error getting selected elements: {ex.Message}");
             }
         }
 
@@ -250,11 +256,11 @@ namespace RevitMCP.Handlers
                 var propNames = parameters["propertyNames"] as JArray;
 
                 if (elemId <= 0)
-                    return Error("elementId is required");
+                    return HandlerResponse.Error("elementId is required");
 
                 Element elem = _doc.GetElement(new ElementId(elemId));
                 if (elem == null)
-                    return Error($"Element with ID {elemId} not found");
+                    return HandlerResponse.Error($"Element with ID {elemId} not found");
 
                 var properties = new JObject();
                 var specifiedProps = propNames?.Cast<JToken>()
@@ -287,7 +293,7 @@ namespace RevitMCP.Handlers
                     }
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["elementId"] = elemId,
                     ["elementName"] = elem.Name,
@@ -299,7 +305,7 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error getting element properties: {ex.Message}");
+                return HandlerResponse.Error($"Error getting element properties: {ex.Message}");
             }
         }
     }
@@ -391,7 +397,7 @@ namespace RevitMCP.Handlers
                     }
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["totalElements"] = totalElements,
                     ["totalVolume"] = Math.Round(totalVolume, 2),
@@ -405,7 +411,7 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error analyzing model: {ex.Message}");
+                return HandlerResponse.Error($"Error analyzing model: {ex.Message}");
             }
         }
 
@@ -437,20 +443,5 @@ namespace RevitMCP.Handlers
         }
     }
 
-    // ─── Utility Methods ──────────────────────────────────────────────────────
-
-    private static JObject Success(JObject data)
-    {
-        data["success"] = true;
-        return data;
-    }
-
-    private static JObject Error(string message)
-    {
-        return new JObject
-        {
-            ["success"] = false,
-            ["error"] = message
-        };
-    }
+    // (Success/Error helpers are centralized in HandlerResponse)
 }

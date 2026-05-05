@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
     <Nullable>enable</Nullable>
     <AssemblyName>RevitMCP.Handlers</AssemblyName>
     <RootNamespace>RevitMCP.Handlers</RootNamespace>
     <LangVersion>10</LangVersion>
     <Platforms>x64</Platforms>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <!--
@@ -17,7 +18,7 @@
     Revit 2025: C:\Program Files\Autodesk\Revit 2025\
   -->
   <PropertyGroup>
-    <RevitDir>C:\Program Files\Autodesk\Revit 2025</RevitDir>
+    <RevitDir>C:\Program Files\Autodesk\Revit 2020</RevitDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,6 +34,10 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Handlers\\**\\*.cs" />
   </ItemGroup>
 
 </Project>

@@ -55,11 +55,11 @@ namespace RevitMCP.Handlers
                     // Extract file paths from CAD imports
                     foreach (var cad in cadImports)
                     {
-                        string cadPath = cad.GetSourceFileName() ?? "";
-                        if (!string.IsNullOrEmpty(cadPath) && (cadPath.EndsWith(".dwg") || cadPath.EndsWith(".dxf")))
-                        {
-                            linkedCADFiles.Add(Path.GetFileName(cadPath));
-                        }
+                        // Revit 2020: ImportInstance does not reliably expose source path.
+                        // Use the instance name (typically includes DWG name).
+                        string name = cad?.Name ?? "";
+                        if (!string.IsNullOrEmpty(name))
+                            linkedCADFiles.Add(name);
                     }
                 }
 
@@ -79,7 +79,7 @@ namespace RevitMCP.Handlers
                     fileSize = new FileInfo(filePath).Length / (1024 * 1024); // MB
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["filePath"] = filePath,
                     ["title"] = title,
@@ -91,7 +91,7 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error getting file info: {ex.Message}");
+                return HandlerResponse.Error($"Error getting file info: {ex.Message}");
             }
         }
     }
@@ -119,27 +119,27 @@ namespace RevitMCP.Handlers
                 var layerFilter = parameters["layerFilter"] as JArray;
 
                 if (string.IsNullOrEmpty(cadFileName))
-                    return Error("linkedCADFileName is required");
+                    return HandlerResponse.Error("linkedCADFileName is required");
 
                 // Find CAD import
                 var cadImport = new FilteredElementCollector(_doc)
                     .OfClass(typeof(ImportInstance))
                     .Cast<ImportInstance>()
-                    .FirstOrDefault(ci => ci.GetSourceFileName().EndsWith(cadFileName));
+                    .FirstOrDefault(ci => (ci.Name ?? "").EndsWith(cadFileName, StringComparison.OrdinalIgnoreCase));
 
                 if (cadImport == null)
-                    return Error($"CAD file not found: {cadFileName}");
+                    return HandlerResponse.Error($"CAD file not found: {cadFileName}");
 
                 var entities = new JArray();
-                var geometryElement = cadImport.GetGeometryObject();
+                var geometryElement = cadImport.get_Geometry(new Options());
 
                 if (geometryElement != null)
                 {
                     // Extract geometry primitives
-                    ExtractGeometryEntities(geometryElement, entities, entityTypes, layerFilter);
+                    ExtractGeometryEntities(geometryElement, Transform.Identity, entities, entityTypes, layerFilter);
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["success"] = true,
                     ["fileName"] = cadFileName,
@@ -149,38 +149,84 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error extracting CAD entities: {ex.Message}");
+                return HandlerResponse.Error($"Error extracting CAD entities: {ex.Message}");
             }
         }
 
-        private void ExtractGeometryEntities(GeometryElement geom, JArray entities, JArray entityTypes, JArray layerFilter)
+        private void ExtractGeometryEntities(GeometryElement geom, Transform t, JArray entities, JArray entityTypes, JArray layerFilter)
         {
             var typeList = entityTypes?.ToObject<List<string>>() ?? new List<string>();
             var layers = layerFilter?.ToObject<List<string>>() ?? new List<string>();
 
             foreach (GeometryObject obj in geom)
             {
+                if (obj is GeometryInstance gi)
+                {
+                    Transform t2 = t.Multiply(gi.Transform);
+                    GeometryElement sym = gi.GetSymbolGeometry();
+                    if (sym != null)
+                        ExtractGeometryEntities(sym, t2, entities, entityTypes, layerFilter);
+                    continue;
+                }
+
+                string layer = GetLayerName(obj) ?? "Default";
+                if (layers.Count > 0 && !layers.Contains(layer))
+                    continue;
+
                 if (obj is Line line && (typeList.Count == 0 || typeList.Contains("LINE")))
                 {
+                    XYZ p0 = t.OfPoint(line.GetEndPoint(0));
+                    XYZ p1 = t.OfPoint(line.GetEndPoint(1));
                     entities.Add(new JObject
                     {
                         ["type"] = "LINE",
-                        ["layer"] = "Default",
-                        ["start"] = new JObject { ["x"] = Math.Round(line.GetEndPoint(0).X, 2), ["y"] = Math.Round(line.GetEndPoint(0).Y, 2) },
-                        ["end"] = new JObject { ["x"] = Math.Round(line.GetEndPoint(1).X, 2), ["y"] = Math.Round(line.GetEndPoint(1).Y, 2) }
+                        ["layer"] = layer,
+                        ["start"] = new JObject { ["x"] = Math.Round(p0.X * 304.8, 2), ["y"] = Math.Round(p0.Y * 304.8, 2), ["z"] = Math.Round(p0.Z * 304.8, 2) },
+                        ["end"] = new JObject { ["x"] = Math.Round(p1.X * 304.8, 2), ["y"] = Math.Round(p1.Y * 304.8, 2), ["z"] = Math.Round(p1.Z * 304.8, 2) }
                     });
                 }
                 else if (obj is Arc arc && (typeList.Count == 0 || typeList.Contains("ARC")))
                 {
+                    Arc a2 = arc.CreateTransformed(t) as Arc;
+                    XYZ c = a2?.Center ?? t.OfPoint(arc.Center);
+                    double r = a2?.Radius ?? arc.Radius;
                     entities.Add(new JObject
                     {
                         ["type"] = "ARC",
-                        ["layer"] = "Default",
-                        ["center"] = new JObject { ["x"] = Math.Round(arc.Center.X, 2), ["y"] = Math.Round(arc.Center.Y, 2) },
-                        ["radius"] = Math.Round(arc.Radius, 2)
+                        ["layer"] = layer,
+                        ["center"] = new JObject { ["x"] = Math.Round(c.X * 304.8, 2), ["y"] = Math.Round(c.Y * 304.8, 2), ["z"] = Math.Round(c.Z * 304.8, 2) },
+                        ["radius"] = Math.Round(r * 304.8, 2)
                     });
                 }
+                else if (obj is PolyLine pl && (typeList.Count == 0 || typeList.Contains("POLYLINE") || typeList.Contains("LINE")))
+                {
+                    IList<XYZ> pts = pl.GetCoordinates();
+                    for (int i = 0; i < pts.Count - 1; i++)
+                    {
+                        XYZ p0 = t.OfPoint(pts[i]);
+                        XYZ p1 = t.OfPoint(pts[i + 1]);
+                        entities.Add(new JObject
+                        {
+                            ["type"] = "LINE",
+                            ["layer"] = layer,
+                            ["start"] = new JObject { ["x"] = Math.Round(p0.X * 304.8, 2), ["y"] = Math.Round(p0.Y * 304.8, 2), ["z"] = Math.Round(p0.Z * 304.8, 2) },
+                            ["end"] = new JObject { ["x"] = Math.Round(p1.X * 304.8, 2), ["y"] = Math.Round(p1.Y * 304.8, 2), ["z"] = Math.Round(p1.Z * 304.8, 2) }
+                        });
+                    }
+                }
             }
+        }
+
+        private string GetLayerName(GeometryObject obj)
+        {
+            try
+            {
+                ElementId gsId = obj.GraphicsStyleId;
+                if (gsId == null || gsId == ElementId.InvalidElementId) return null;
+                var gs = _doc.GetElement(gsId) as GraphicsStyle;
+                return gs?.GraphicsStyleCategory?.Name;
+            }
+            catch { return null; }
         }
     }
 
@@ -205,43 +251,35 @@ namespace RevitMCP.Handlers
                 bool includeUnused = parameters["includeUnusedLayers"]?.Value<bool>() ?? false;
 
                 if (string.IsNullOrEmpty(cadFileName))
-                    return Error("linkedCADFileName is required");
+                    return HandlerResponse.Error("linkedCADFileName is required");
 
                 // Find CAD import
                 var cadImport = new FilteredElementCollector(_doc)
                     .OfClass(typeof(ImportInstance))
                     .Cast<ImportInstance>()
-                    .FirstOrDefault(ci => ci.GetSourceFileName().EndsWith(cadFileName));
+                    .FirstOrDefault(ci => (ci.Name ?? "").EndsWith(cadFileName, StringComparison.OrdinalIgnoreCase));
 
                 if (cadImport == null)
-                    return Error($"CAD file not found: {cadFileName}");
+                    return HandlerResponse.Error($"CAD file not found: {cadFileName}");
 
                 var layers = new JArray();
+                var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                GeometryElement ge = cadImport.get_Geometry(new Options());
+                if (ge != null)
+                    CountLayers(ge, Transform.Identity, counts);
 
-                // Common Vietnam BIM layers
-                var knownLayers = new Dictionary<string, (string color, int count)>
-                {
-                    { "Tường", ("Red", 45) },
-                    { "Cửa", ("Blue", 12) },
-                    { "Cột", ("Green", 8) },
-                    { "Hoàn thiện", ("Yellow", 23) },
-                    { "Tầng", ("Cyan", 5) },
-                    { "Cầu thang", ("Magenta", 3) }
-                };
-
-                foreach (var layer in knownLayers)
+                foreach (var kv in counts.OrderByDescending(k => k.Value))
                 {
                     layers.Add(new JObject
                     {
-                        ["name"] = layer.Key,
-                        ["entityCount"] = layer.Value.count,
-                        ["color"] = layer.Value.color,
+                        ["name"] = kv.Key,
+                        ["entityCount"] = kv.Value,
                         ["visible"] = true,
                         ["locked"] = false
                     });
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["success"] = true,
                     ["fileName"] = cadFileName,
@@ -251,8 +289,38 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error getting CAD layers: {ex.Message}");
+                return HandlerResponse.Error($"Error getting CAD layers: {ex.Message}");
             }
+        }
+
+        private void CountLayers(GeometryElement geom, Transform t, Dictionary<string, int> counts)
+        {
+            foreach (GeometryObject obj in geom)
+            {
+                if (obj is GeometryInstance gi)
+                {
+                    Transform t2 = t.Multiply(gi.Transform);
+                    GeometryElement sym = gi.GetSymbolGeometry();
+                    if (sym != null) CountLayers(sym, t2, counts);
+                    continue;
+                }
+
+                string layer = GetLayerName(obj) ?? "Default";
+                if (!counts.ContainsKey(layer)) counts[layer] = 0;
+                counts[layer]++;
+            }
+        }
+
+        private string GetLayerName(GeometryObject obj)
+        {
+            try
+            {
+                ElementId gsId = obj.GraphicsStyleId;
+                if (gsId == null || gsId == ElementId.InvalidElementId) return null;
+                var gs = _doc.GetElement(gsId) as GraphicsStyle;
+                return gs?.GraphicsStyleCategory?.Name;
+            }
+            catch { return null; }
         }
     }
 
@@ -279,7 +347,7 @@ namespace RevitMCP.Handlers
                 bool includeInstances = parameters["includeInstances"]?.Value<bool>() ?? false;
 
                 if (string.IsNullOrEmpty(cadFileName))
-                    return Error("linkedCADFileName is required");
+                    return HandlerResponse.Error("linkedCADFileName is required");
 
                 var blocks = new JArray();
 
@@ -337,7 +405,7 @@ namespace RevitMCP.Handlers
                     blocks.Add(blockData);
                 }
 
-                return Success(new JObject
+                return HandlerResponse.Success(new JObject
                 {
                     ["success"] = true,
                     ["fileName"] = cadFileName,
@@ -347,7 +415,7 @@ namespace RevitMCP.Handlers
             }
             catch (Exception ex)
             {
-                return Error($"Error getting CAD block info: {ex.Message}");
+                return HandlerResponse.Error($"Error getting CAD block info: {ex.Message}");
             }
         }
 
@@ -392,7 +460,7 @@ namespace RevitMCP.Handlers
                 double height = parameters["height"]?.Value<double>() ?? 1650;
 
                 if (string.IsNullOrEmpty(blockName) || string.IsNullOrEmpty(familyName))
-                    return Error("blockName and familyName are required");
+                    return HandlerResponse.Error("blockName and familyName are required");
 
                 using (var tx = new Transaction(_doc, "MCP: Convert CAD to Family"))
                 {
@@ -404,7 +472,7 @@ namespace RevitMCP.Handlers
                         string templatePath = GetFamilyTemplate(familyType);
                         if (string.IsNullOrEmpty(templatePath) || !File.Exists(templatePath))
                         {
-                            return Error($"Family template not found for type: {familyType}");
+                            return HandlerResponse.Error($"Family template not found for type: {familyType}");
                         }
 
                         // Load and open the family document
@@ -429,7 +497,7 @@ namespace RevitMCP.Handlers
 
                         tx.Commit();
 
-                        return Success(new JObject
+                        return HandlerResponse.Success(new JObject
                         {
                             ["success"] = true,
                             ["familyName"] = familyName,
@@ -443,13 +511,13 @@ namespace RevitMCP.Handlers
                     catch (Exception ex)
                     {
                         tx.RollBack();
-                        return Error($"Error creating family: {ex.Message}");
+                        return HandlerResponse.Error($"Error creating family: {ex.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                return Error($"Error in CAD to Family conversion: {ex.Message}");
+                return HandlerResponse.Error($"Error in CAD to Family conversion: {ex.Message}");
             }
         }
 
@@ -474,11 +542,11 @@ namespace RevitMCP.Handlers
             // Set shared parameters in family
             var params_width = familyDoc.FamilyManager.Parameters
                 .Cast<FamilyParameter>()
-                .FirstOrDefault(p => p.Name == "Width");
+                .FirstOrDefault(p => p.Definition != null && p.Definition.Name == "Width");
 
             var param_height = familyDoc.FamilyManager.Parameters
                 .Cast<FamilyParameter>()
-                .FirstOrDefault(p => p.Name == "Height");
+                .FirstOrDefault(p => p.Definition != null && p.Definition.Name == "Height");
 
             if (params_width != null)
                 familyDoc.FamilyManager.Set(params_width, width);
@@ -488,20 +556,5 @@ namespace RevitMCP.Handlers
         }
     }
 
-    // ─── Utility Methods ──────────────────────────────────────────────────────
-
-    private static JObject Success(JObject data)
-    {
-        data["success"] = true;
-        return data;
-    }
-
-    private static JObject Error(string message)
-    {
-        return new JObject
-        {
-            ["success"] = false,
-            ["error"] = message
-        };
-    }
+    // (Success/Error helpers are centralized in HandlerResponse)
 }

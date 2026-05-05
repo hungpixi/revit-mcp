@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
     <AssemblyName>RevitMCPPlugin</AssemblyName>
     <RootNamespace>RevitMCPPlugin</RootNamespace>
     <LangVersion>10</LangVersion>
@@ -8,7 +8,7 @@
     <OutputPath>bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
   <PropertyGroup>
-    <RevitDir>C:\Program Files\Autodesk\Revit 2025</RevitDir>
+    <RevitDir>C:\Program Files\Autodesk\Revit 2020</RevitDir>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="RevitAPI">

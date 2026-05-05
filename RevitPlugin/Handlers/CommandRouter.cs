@@ -33,6 +33,7 @@ namespace RevitMCP.Handlers
                     "get_layers"                => new GetLayersHandler(_doc).Execute(parameters),
                     "get_cad_block_info"        => new GetCADBlockInfoHandler(_doc).Execute(parameters),
                     "convert_cad_to_family"     => new ConvertCADToFamilyHandler(_doc).Execute(parameters),
+                    "link_cad_files"            => new LinkCadFilesHandler(_doc).Execute(parameters),
 
                     // ─── Level & Grid Tools (Phase 2A) ───────────────────────────
                     "create_level"              => new CreateLevelHandler(_doc).Execute(parameters),

@@ -372,7 +372,7 @@ namespace RevitMCP.Handlers
                                     "Finish1"  => MaterialFunctionAssignment.Finish1,
                                     "Finish2"  => MaterialFunctionAssignment.Finish2,
                                     "Substrate"=> MaterialFunctionAssignment.Substrate,
-                                    "Thermal"  => MaterialFunctionAssignment.ThermalOrAir,
+                                    "Thermal"  => MaterialFunctionAssignment.Insulation,
                                     "Membrane" => MaterialFunctionAssignment.Membrane,
                                     _          => MaterialFunctionAssignment.Structure
                                 };

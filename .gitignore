@@ -29,6 +29,8 @@ revit-mcp/.claude
 RevitPlugin/bin/
 RevitPlugin/obj/
 RevitPlugin/*.user
+RevitPlugin/**/bin/
+RevitPlugin/**/obj/
 
 # Misc
 *.resolved
@@ -36,3 +38,4 @@ node_out.txt
 phase3_result.txt
 screen_revit.png
 result_*.txt
+evidence_*.log

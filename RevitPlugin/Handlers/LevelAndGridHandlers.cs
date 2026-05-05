@@ -31,7 +31,7 @@ namespace RevitMCP.Handlers
                 bool isStructural = parameters["structuralLevel"]?.Value<bool>() ?? false;
 
                 if (string.IsNullOrEmpty(levelName))
-                    return Error("levelName is required");
+                    return HandlerResponse.Error("levelName is required");
 
                 // Check if level already exists
                 var existingLevel = new FilteredElementCollector(_doc)
@@ -40,7 +40,7 @@ namespace RevitMCP.Handlers
                     .FirstOrDefault(l => l.Name == levelName);
 
                 if (existingLevel != null)
-                    return Error($"Level '{levelName}' already exists");
+                    return HandlerResponse.Error($"Level '{levelName}' already exists");
 
                 using (var tx = new Transaction(_doc, "MCP: Create Level"))
                 {
@@ -49,7 +49,7 @@ namespace RevitMCP.Handlers
                     try
                     {
                         // Convert mm to Revit internal units (feet)
-                        double elevationInFeet = UnitUtils.ConvertToInternalUnits(elevation, UnitTypeId.Millimeters);
+                        double elevationInFeet = UnitUtils.ConvertToInternalUnits(elevation, DisplayUnitType.DUT_MILLIMETERS);
 
                         // Create new level
                         Level newLevel = Level.Create(_doc, elevationInFeet);
@@ -70,7 +70,7 @@ namespace RevitMCP.Handlers
 
                         tx.Commit();
 
-                        return Success(new JObject
+                        return HandlerResponse.Success(new JObject
                         {
                             ["levelId"] = newLevel.Id.IntegerValue,
                             ["levelName"] = newLevel.Name,
@@ -84,13 +84,13 @@ namespace RevitMCP.Handlers
                     catch (Exception ex)
                     {
                         tx.RollBack();
-                        return Error($"Error creating level: {ex.Message}");
+                        return HandlerResponse.Error($"Error creating level: {ex.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                return Error($"Exception in CreateLevel: {ex.Message}");
+                return HandlerResponse.Error($"Exception in CreateLevel: {ex.Message}");
             }
         }
     }
@@ -119,7 +119,7 @@ namespace RevitMCP.Handlers
                 var endPt = parameters["endPoint"] as JObject;
 
                 if (string.IsNullOrEmpty(gridName) || startPt == null || endPt == null)
-                    return Error("gridName, startPoint, and endPoint are required");
+                    return HandlerResponse.Error("gridName, startPoint, and endPoint are required");
 
                 // Parse coordinates (in mm)
                 double startX = startPt["x"]?.Value<double>() ?? 0;
@@ -137,7 +137,7 @@ namespace RevitMCP.Handlers
                     .FirstOrDefault(g => g.Name == gridName);
 
                 if (existingGrid != null)
-                    return Error($"Grid '{gridName}' already exists");
+                    return HandlerResponse.Error($"Grid '{gridName}' already exists");
 
                 using (var tx = new Transaction(_doc, "MCP: Create Grid"))
                 {
@@ -147,15 +147,15 @@ namespace RevitMCP.Handlers
                     {
                         // Convert mm to Revit internal units (feet)
                         var startPoint = new XYZ(
-                            UnitUtils.ConvertToInternalUnits(startX, UnitTypeId.Millimeters),
-                            UnitUtils.ConvertToInternalUnits(startY, UnitTypeId.Millimeters),
-                            UnitUtils.ConvertToInternalUnits(startZ, UnitTypeId.Millimeters)
+                            UnitUtils.ConvertToInternalUnits(startX, DisplayUnitType.DUT_MILLIMETERS),
+                            UnitUtils.ConvertToInternalUnits(startY, DisplayUnitType.DUT_MILLIMETERS),
+                            UnitUtils.ConvertToInternalUnits(startZ, DisplayUnitType.DUT_MILLIMETERS)
                         );
 
                         var endPoint = new XYZ(
-                            UnitUtils.ConvertToInternalUnits(endX, UnitTypeId.Millimeters),
-                            UnitUtils.ConvertToInternalUnits(endY, UnitTypeId.Millimeters),
-                            UnitUtils.ConvertToInternalUnits(endZ, UnitTypeId.Millimeters)
+                            UnitUtils.ConvertToInternalUnits(endX, DisplayUnitType.DUT_MILLIMETERS),
+                            UnitUtils.ConvertToInternalUnits(endY, DisplayUnitType.DUT_MILLIMETERS),
+                            UnitUtils.ConvertToInternalUnits(endZ, DisplayUnitType.DUT_MILLIMETERS)
                         );
 
                         // Create line for grid geometry
@@ -171,7 +171,7 @@ namespace RevitMCP.Handlers
                         double gridLength = gridLine.Length;
                         string direction = DetermineGridDirection(gridLine);
 
-                        return Success(new JObject
+                        return HandlerResponse.Success(new JObject
                         {
                             ["gridId"] = newGrid.Id.IntegerValue,
                             ["gridName"] = newGrid.Name,
@@ -185,13 +185,13 @@ namespace RevitMCP.Handlers
                     catch (Exception ex)
                     {
                         tx.RollBack();
-                        return Error($"Error creating grid: {ex.Message}");
+                        return HandlerResponse.Error($"Error creating grid: {ex.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                return Error($"Exception in CreateGrid: {ex.Message}");
+                return HandlerResponse.Error($"Exception in CreateGrid: {ex.Message}");
             }
         }
 
@@ -235,7 +235,7 @@ namespace RevitMCP.Handlers
                 string levelName = parameters["level"]?.Value<string>();
 
                 if (gridNames == null || gridNames.Count < 2)
-                    return Error("At least 2 grid names required for intersections");
+                    return HandlerResponse.Error("At least 2 grid names required for intersections");
 
                 // Get all grids in project
                 var allGrids = new FilteredElementCollector(_doc)
@@ -253,7 +253,7 @@ namespace RevitMCP.Handlers
                         .FirstOrDefault(l => l.Name == levelName);
 
                     if (targetLevel == null)
-                        return Error($"Level '{levelName}' not found");
+                        return HandlerResponse.Error($"Level '{levelName}' not found");
                 }
 
                 using (var tx = new Transaction(_doc, "MCP: Create Grid Intersections"))
@@ -305,7 +305,7 @@ namespace RevitMCP.Handlers
 
                         tx.Commit();
 
-                        return Success(new JObject
+                        return HandlerResponse.Success(new JObject
                         {
                             ["intersectionCount"] = intersections.Count,
                             ["markerType"] = markerType,
@@ -317,13 +317,13 @@ namespace RevitMCP.Handlers
                     catch (Exception ex)
                     {
                         tx.RollBack();
-                        return Error($"Error creating intersections: {ex.Message}");
+                        return HandlerResponse.Error($"Error creating intersections: {ex.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                return Error($"Exception in GridIntersection: {ex.Message}");
+                return HandlerResponse.Error($"Exception in GridIntersection: {ex.Message}");
             }
         }
 
@@ -349,20 +349,5 @@ namespace RevitMCP.Handlers
         }
     }
 
-    // ─── Utility Methods ──────────────────────────────────────────────────────
-
-    private static JObject Success(JObject data)
-    {
-        data["success"] = true;
-        return data;
-    }
-
-    private static JObject Error(string message)
-    {
-        return new JObject
-        {
-            ["success"] = false,
-            ["error"] = message
-        };
-    }
+    // (Success/Error helpers are centralized in HandlerResponse)
 }
