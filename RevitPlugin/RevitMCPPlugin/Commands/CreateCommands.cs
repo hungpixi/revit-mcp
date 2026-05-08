@@ -355,6 +355,11 @@ namespace RevitMCPPlugin.Commands
             var yCoords = (@params["yCoords"] as JArray)?.Select(t => t.Value<double>()).ToList();
             double xLenMm = @params["xLength"]?.Value<double>() ?? 20000;
             double yLenMm = @params["yLength"]?.Value<double>() ?? 20000;
+            double xMinMm = @params["xExtentMin"]?.Value<double>() ?? -xLenMm / 2.0;
+            double xMaxMm = @params["xExtentMax"]?.Value<double>() ??  xLenMm / 2.0;
+            double yMinMm = @params["yExtentMin"]?.Value<double>() ?? -yLenMm / 2.0;
+            double yMaxMm = @params["yExtentMax"]?.Value<double>() ??  yLenMm / 2.0;
+            double elevationMm = @params["elevation"]?.Value<double>() ?? 0;
             var xNames = (@params["xNames"] as JArray)?.Select(t => t.Value<string>()).ToList();
             var yNames = (@params["yNames"] as JArray)?.Select(t => t.Value<string>()).ToList();
 
@@ -365,8 +370,11 @@ namespace RevitMCPPlugin.Commands
             xCoords ??= new List<double>();
             yCoords ??= new List<double>();
 
-            double halfY = yLenMm * MmToFeet / 2.0;
-            double halfX = xLenMm * MmToFeet / 2.0;
+            double xMinFt = xMinMm * MmToFeet;
+            double xMaxFt = xMaxMm * MmToFeet;
+            double yMinFt = yMinMm * MmToFeet;
+            double yMaxFt = yMaxMm * MmToFeet;
+            double elevationFt = elevationMm * MmToFeet;
 
             var results = new JArray();
 
@@ -381,8 +389,8 @@ namespace RevitMCPPlugin.Commands
                     {
                         double xFt = xCoords[i] * MmToFeet;
                         Line line = Line.CreateBound(
-                            new XYZ(xFt, -halfY, 0),
-                            new XYZ(xFt,  halfY, 0));
+                            new XYZ(xFt, yMinFt, elevationFt),
+                            new XYZ(xFt, yMaxFt, elevationFt));
                         Grid grid = Grid.Create(doc, line);
 
                         string name = (xNames != null && i < xNames.Count)
@@ -411,8 +419,8 @@ namespace RevitMCPPlugin.Commands
                     {
                         double yFt = yCoords[i] * MmToFeet;
                         Line line = Line.CreateBound(
-                            new XYZ(-halfX, yFt, 0),
-                            new XYZ( halfX, yFt, 0));
+                            new XYZ(xMinFt, yFt, elevationFt),
+                            new XYZ(xMaxFt, yFt, elevationFt));
                         Grid grid = Grid.Create(doc, line);
 
                         // Default Y-direction names: A, B, C…

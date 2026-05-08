@@ -58,7 +58,7 @@ export function registerCreateLevelTool(server: McpServer) {
     },
     async (args, extra) => {
       const params = {
-        data: args.data,
+        levels: args.data,
       };
 
       try {

@@ -2,6 +2,47 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { withRevitConnection } from "../utils/ConnectionManager.js";
 
+function buildCoordinates(count: number, spacing: number, start: number) {
+  return Array.from({ length: count }, (_, index) => start + index * spacing);
+}
+
+function alphabeticLabelToIndex(label: string) {
+  const normalized = label.trim().toUpperCase();
+  if (!/^[A-Z]+$/.test(normalized)) {
+    return 0;
+  }
+
+  return (
+    normalized.split("").reduce((value, char) => {
+      return value * 26 + (char.charCodeAt(0) - "A".charCodeAt(0) + 1);
+    }, 0) - 1
+  );
+}
+
+function buildLabels(
+  count: number,
+  startLabel: string,
+  namingStyle: "alphabetic" | "numeric"
+) {
+  if (namingStyle === "numeric") {
+    const start = Number.parseInt(startLabel, 10);
+    const first = Number.isFinite(start) ? start : 1;
+    return Array.from({ length: count }, (_, index) => String(first + index));
+  }
+
+  const first = alphabeticLabelToIndex(startLabel);
+
+  return Array.from({ length: count }, (_, index) => {
+    let value = first + index;
+    let label = "";
+    do {
+      label = String.fromCharCode("A".charCodeAt(0) + (value % 26)) + label;
+      value = Math.floor(value / 26) - 1;
+    } while (value >= 0);
+    return label;
+  });
+}
+
 export function registerCreateGridTool(server: McpServer) {
   server.tool(
     "create_grid",
@@ -72,14 +113,18 @@ export function registerCreateGridTool(server: McpServer) {
     },
     async (args, extra) => {
       const params = {
-        xCount: args.xCount,
-        xSpacing: args.xSpacing,
-        xStartLabel: args.xStartLabel,
-        xNamingStyle: args.xNamingStyle,
-        yCount: args.yCount,
-        ySpacing: args.ySpacing,
-        yStartLabel: args.yStartLabel,
-        yNamingStyle: args.yNamingStyle,
+        xCoords: buildCoordinates(
+          args.xCount,
+          args.xSpacing,
+          args.xStartPosition
+        ),
+        yCoords: buildCoordinates(
+          args.yCount,
+          args.ySpacing,
+          args.yStartPosition
+        ),
+        xNames: buildLabels(args.xCount, args.xStartLabel, args.xNamingStyle),
+        yNames: buildLabels(args.yCount, args.yStartLabel, args.yNamingStyle),
         xExtentMin: args.xExtentMin,
         xExtentMax: args.xExtentMax,
         yExtentMin: args.yExtentMin,
