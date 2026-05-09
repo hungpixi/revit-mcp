@@ -29,6 +29,7 @@ namespace RevitMCPPlugin
         {
             public JObject Request { get; set; }
             public TaskCompletionSource<string> Tcs { get; set; }
+            public int IsCanceled;
         }
 
         // ─── State ────────────────────────────────────────────────────────────
@@ -46,7 +47,8 @@ namespace RevitMCPPlugin
             var tcs = new TaskCompletionSource<string>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
-            _queue.Enqueue(new RequestItem { Request = request, Tcs = tcs });
+            var item = new RequestItem { Request = request, Tcs = tcs };
+            _queue.Enqueue(item);
 
             // Ask Revit to schedule a call to Execute() on the main thread
             ExternalEventRequest result = App.RevitEvent.Raise();
@@ -60,7 +62,11 @@ namespace RevitMCPPlugin
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120)))
             {
                 cts.Token.Register(
-                    () => tcs.TrySetCanceled(),
+                    () =>
+                    {
+                        Volatile.Write(ref item.IsCanceled, 1);
+                        tcs.TrySetCanceled();
+                    },
                     useSynchronizationContext: false);
 
                 try
@@ -94,6 +100,12 @@ namespace RevitMCPPlugin
             {
                 try
                 {
+                    if (Volatile.Read(ref item.IsCanceled) != 0)
+                    {
+                        App.Log($"Skipping timed-out request {item.Request["id"]}");
+                        continue;
+                    }
+
                     Document doc = uiApp.ActiveUIDocument?.Document;
                     string response = Dispatch(uiApp, doc, item.Request);
                     item.Tcs.TrySetResult(response);
