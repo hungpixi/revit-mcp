@@ -235,15 +235,17 @@ namespace RevitMCP.Handlers
                     var solidB = GetSolid(elemB);
                     if (solidB == null) continue;
 
-                    BooleanOperationsUtils.ExecuteBooleanOperationModifyingOriginalSolid(
-                        solidA, solidB, BooleanOperationsType.Intersect);
-
                     double volume = 0;
-                    try { volume = solidA.Volume; } catch { }
-
-                    bool isClash = type == "hard"
-                        ? volume > 1e-10
-                        : IsWithinClearance(elemA, elemB, clearance / 304.8);
+                    bool isClash;
+                    if (type == "hard")
+                    {
+                        volume = GetIntersectionVolume(solidA, solidB);
+                        isClash = volume > 1e-10;
+                    }
+                    else
+                    {
+                        isClash = IsWithinClearance(elemA, elemB, clearance / 304.8);
+                    }
 
                     if (isClash)
                     {
@@ -325,6 +327,20 @@ namespace RevitMCP.Handlers
             }
             catch { }
             return null;
+        }
+
+        private double GetIntersectionVolume(Solid solidA, Solid solidB)
+        {
+            try
+            {
+                var intersection = BooleanOperationsUtils.ExecuteBooleanOperation(
+                    solidA, solidB, BooleanOperationsType.Intersect);
+                return intersection?.Volume ?? 0;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         private bool IsWithinClearance(Element a, Element b, double clearanceFt)
