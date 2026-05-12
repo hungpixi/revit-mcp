@@ -358,6 +358,24 @@ namespace RevitMCPPlugin.Commands
             var xNames = (@params["xNames"] as JArray)?.Select(t => t.Value<string>()).ToList();
             var yNames = (@params["yNames"] as JArray)?.Select(t => t.Value<string>()).ToList();
 
+            if (xCoords == null || xCoords.Count == 0)
+            {
+                xCoords = BuildGridCoords(@params, "xCount", "xSpacing", "xStartPosition");
+                if ((xNames == null || xNames.Count == 0) && xCoords.Count > 0)
+                    xNames = BuildGridNames(xCoords.Count,
+                        @params["xStartLabel"]?.Value<string>() ?? "A",
+                        @params["xNamingStyle"]?.Value<string>() ?? "alphabetic");
+            }
+
+            if (yCoords == null || yCoords.Count == 0)
+            {
+                yCoords = BuildGridCoords(@params, "yCount", "ySpacing", "yStartPosition");
+                if ((yNames == null || yNames.Count == 0) && yCoords.Count > 0)
+                    yNames = BuildGridNames(yCoords.Count,
+                        @params["yStartLabel"]?.Value<string>() ?? "1",
+                        @params["yNamingStyle"]?.Value<string>() ?? "numeric");
+            }
+
             if ((xCoords == null || xCoords.Count == 0) &&
                 (yCoords == null || yCoords.Count == 0))
                 return Error("xCoords or yCoords must be provided");
@@ -365,8 +383,17 @@ namespace RevitMCPPlugin.Commands
             xCoords ??= new List<double>();
             yCoords ??= new List<double>();
 
-            double halfY = yLenMm * MmToFeet / 2.0;
-            double halfX = xLenMm * MmToFeet / 2.0;
+            bool hasXExtents = @params["xExtentMin"] != null || @params["xExtentMax"] != null;
+            bool hasYExtents = @params["yExtentMin"] != null || @params["yExtentMax"] != null;
+            double xMinMm = hasXExtents ? @params["xExtentMin"]?.Value<double>() ?? 0 : -xLenMm / 2.0;
+            double xMaxMm = hasXExtents ? @params["xExtentMax"]?.Value<double>() ?? xLenMm : xLenMm / 2.0;
+            double yMinMm = hasYExtents ? @params["yExtentMin"]?.Value<double>() ?? 0 : -yLenMm / 2.0;
+            double yMaxMm = hasYExtents ? @params["yExtentMax"]?.Value<double>() ?? yLenMm : yLenMm / 2.0;
+            double xMin = xMinMm * MmToFeet;
+            double xMax = xMaxMm * MmToFeet;
+            double yMin = yMinMm * MmToFeet;
+            double yMax = yMaxMm * MmToFeet;
+            double z = (@params["elevation"]?.Value<double>() ?? 0) * MmToFeet;
 
             var results = new JArray();
 
@@ -381,8 +408,8 @@ namespace RevitMCPPlugin.Commands
                     {
                         double xFt = xCoords[i] * MmToFeet;
                         Line line = Line.CreateBound(
-                            new XYZ(xFt, -halfY, 0),
-                            new XYZ(xFt,  halfY, 0));
+                            new XYZ(xFt, yMin, z),
+                            new XYZ(xFt, yMax, z));
                         Grid grid = Grid.Create(doc, line);
 
                         string name = (xNames != null && i < xNames.Count)
@@ -411,8 +438,8 @@ namespace RevitMCPPlugin.Commands
                     {
                         double yFt = yCoords[i] * MmToFeet;
                         Line line = Line.CreateBound(
-                            new XYZ(-halfX, yFt, 0),
-                            new XYZ( halfX, yFt, 0));
+                            new XYZ(xMin, yFt, z),
+                            new XYZ(xMax, yFt, z));
                         Grid grid = Grid.Create(doc, line);
 
                         // Default Y-direction names: A, B, C…
@@ -461,7 +488,7 @@ namespace RevitMCPPlugin.Commands
         {
             if (doc == null) return Error("No active document");
 
-            var levelsParam = @params["levels"] as JArray;
+            var levelsParam = @params["levels"] as JArray ?? @params["data"] as JArray;
             if (levelsParam == null || levelsParam.Count == 0)
                 return Error("levels array is required");
 
@@ -740,6 +767,71 @@ namespace RevitMCPPlugin.Commands
                 .OfCategory(BuiltInCategory.OST_StructuralFraming)
                 .Cast<FamilySymbol>()
                 .FirstOrDefault();
+        }
+
+        private static List<double> BuildGridCoords(JObject parameters, string countKey, string spacingKey, string startKey)
+        {
+            int count = parameters[countKey]?.Value<int>() ?? 0;
+            double spacing = parameters[spacingKey]?.Value<double>() ?? 0;
+            double start = parameters[startKey]?.Value<double>() ?? 0;
+
+            if (count <= 0 || spacing <= 0)
+                return new List<double>();
+
+            return Enumerable.Range(0, count)
+                .Select(i => start + i * spacing)
+                .ToList();
+        }
+
+        private static List<string> BuildGridNames(int count, string startLabel, string namingStyle)
+        {
+            if (count <= 0)
+                return new List<string>();
+
+            if (string.Equals(namingStyle, "numeric", StringComparison.OrdinalIgnoreCase))
+            {
+                int start = int.TryParse(startLabel, out int parsed) ? parsed : 1;
+                return Enumerable.Range(0, count)
+                    .Select(i => (start + i).ToString())
+                    .ToList();
+            }
+
+            int startIndex = AlphabeticLabelToIndex(startLabel);
+            return Enumerable.Range(0, count)
+                .Select(i => AlphabeticLabelFromIndex(startIndex + i))
+                .ToList();
+        }
+
+        private static int AlphabeticLabelToIndex(string label)
+        {
+            if (string.IsNullOrWhiteSpace(label))
+                return 0;
+
+            int index = 0;
+            foreach (char ch in label.Trim().ToUpperInvariant())
+            {
+                if (ch < 'A' || ch > 'Z')
+                    return 0;
+                index = index * 26 + (ch - 'A' + 1);
+            }
+
+            return Math.Max(0, index - 1);
+        }
+
+        private static string AlphabeticLabelFromIndex(int index)
+        {
+            index = Math.Max(0, index);
+            string label = "";
+
+            do
+            {
+                int remainder = index % 26;
+                label = (char)('A' + remainder) + label;
+                index = index / 26 - 1;
+            }
+            while (index >= 0);
+
+            return label;
         }
 
         private static JObject Error(string msg) =>
