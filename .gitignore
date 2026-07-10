@@ -40,3 +40,21 @@ screen_revit.png
 result_*.txt
 evidence_*.log
 2026-*-*.txt
+
+
+# Backup auto-ignores
+node_modules/
+venv/
+.venv/
+dist/
+build/
+.next/
+.svelte-kit/
+target/
+.env*
+*.log
+*.zip
+*.tar.gz
+*.rar
+tmp/
+temp/
