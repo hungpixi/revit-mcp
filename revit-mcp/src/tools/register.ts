@@ -31,12 +31,14 @@ export async function registerTools(server: McpServer) {
       const module = await import(importPath);
 
       // 查找并执行注册函数
-      const registerFunctionName = Object.keys(module).find(
+      const registerFunctionNames = Object.keys(module).filter(
         (key) => key.startsWith("register") && typeof module[key] === "function"
       );
 
-      if (registerFunctionName) {
-        module[registerFunctionName](server);
+      if (registerFunctionNames.length > 0) {
+        for (const registerFunctionName of registerFunctionNames) {
+          module[registerFunctionName](server);
+        }
         console.error(`已注册工具: ${file}`);
       } else {
         console.warn(`警告: 在文件 ${file} 中未找到注册函数`);
