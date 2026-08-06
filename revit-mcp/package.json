@@ -10,7 +10,8 @@
   "scripts": {
     "clean": "rimraf build",
     "prebuild": "npm run clean",
-    "build": "tsc"
+    "build": "tsc",
+    "test": "npm run build && node tests/socket-client-framing.test.mjs"
   },
   "files": [
     "build"

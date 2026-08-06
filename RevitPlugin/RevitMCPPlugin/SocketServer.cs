@@ -103,8 +103,20 @@ namespace RevitMCPPlugin
                         // Process all complete JSON objects in the buffer
                         while (true)
                         {
-                            string accumulated = sb.ToString().TrimStart();
-                            if (string.IsNullOrWhiteSpace(accumulated)) break;
+                            string buffered = sb.ToString();
+                            int leadingWhitespace = CountLeadingWhitespace(buffered);
+                            if (leadingWhitespace == buffered.Length)
+                            {
+                                sb.Clear();
+                                break;
+                            }
+
+                            if (leadingWhitespace > 0)
+                            {
+                                sb.Remove(0, leadingWhitespace);
+                            }
+
+                            string accumulated = sb.ToString();
 
                             JObject request = TryParseJson(accumulated, out int consumed);
                             if (request == null) break; // incomplete JSON — wait for more
@@ -218,6 +230,17 @@ namespace RevitMCPPlugin
             }
 
             return null; // JSON not yet complete
+        }
+
+        private static int CountLeadingWhitespace(string raw)
+        {
+            int count = 0;
+            while (count < raw.Length && char.IsWhiteSpace(raw[count]))
+            {
+                count++;
+            }
+
+            return count;
         }
 
         private static string MakeError(string id, string msg)

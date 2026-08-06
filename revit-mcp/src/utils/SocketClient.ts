@@ -40,14 +40,11 @@ export class RevitClientConnection {
   }
 
   private processBuffer(): void {
-    try {
-      // 尝试解析JSON
-      const response = JSON.parse(this.buffer);
-      // 如果成功解析，处理响应并清空缓冲区
-      this.handleResponse(this.buffer);
-      this.buffer = "";
-    } catch (e) {
-      // 如果解析失败，可能是因为数据不完整，继续等待更多数据
+    const { messages, remaining } = extractJsonMessages(this.buffer);
+    this.buffer = remaining;
+
+    for (const message of messages) {
+      this.handleResponse(message);
     }
   }
 
@@ -144,4 +141,86 @@ export class RevitClientConnection {
       }
     });
   }
+}
+
+export function extractJsonMessages(buffer: string): {
+  messages: string[];
+  remaining: string;
+} {
+  const messages: string[] = [];
+  let cursor = 0;
+
+  while (cursor < buffer.length) {
+    while (cursor < buffer.length && /\s/.test(buffer[cursor])) {
+      cursor++;
+    }
+
+    if (cursor >= buffer.length) {
+      return { messages, remaining: "" };
+    }
+
+    if (buffer[cursor] !== "{") {
+      const nextObjectStart = buffer.indexOf("{", cursor + 1);
+      if (nextObjectStart === -1) {
+        return { messages, remaining: "" };
+      }
+      cursor = nextObjectStart;
+    }
+
+    const messageEnd = findJsonObjectEnd(buffer, cursor);
+    if (messageEnd === -1) {
+      return { messages, remaining: buffer.slice(cursor) };
+    }
+
+    const candidate = buffer.slice(cursor, messageEnd + 1);
+    try {
+      JSON.parse(candidate);
+      messages.push(candidate);
+      cursor = messageEnd + 1;
+    } catch {
+      cursor = messageEnd + 1;
+    }
+  }
+
+  return { messages, remaining: "" };
+}
+
+function findJsonObjectEnd(buffer: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < buffer.length; i++) {
+    const char = buffer[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\" && inString) {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === "{") {
+      depth++;
+    } else if (char === "}") {
+      depth--;
+      if (depth === 0) {
+        return i;
+      }
+    }
+  }
+
+  return -1;
 }
