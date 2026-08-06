@@ -1,0 +1,318 @@
+# Instincts generated from https://github.com/hungpixi/revit-mcp
+# Generated: 2026-05-13T11:05:28.907Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: revit-mcp-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/hungpixi/revit-mcp
+---
+
+# Revit Mcp Commit Length
+
+## Action
+
+Keep commit messages concise (~28 characters)
+
+## Evidence
+
+- Average commit message length: 28 chars
+- Based on 1 commits
+
+---
+id: revit-mcp-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/hungpixi/revit-mcp
+---
+
+# Revit Mcp Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: revit-mcp-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/hungpixi/revit-mcp
+---
+
+# Revit Mcp Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: revit-mcp-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/hungpixi/revit-mcp
+---
+
+# Revit Mcp Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: revit-mcp-instinct-cs-class-naming
+trigger: "When creating a new C# class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Cs Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in files: RevitPlugin/*.cs
+- NamingConventions.classes: PascalCase
+
+---
+id: revit-mcp-instinct-cs-file-naming
+trigger: "When creating a new C# source file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Cs File Naming
+
+## Action
+
+Name the file using PascalCase
+
+## Evidence
+
+- Pattern in files: RevitPlugin/*.cs
+- NamingConventions.files: PascalCase
+
+---
+id: revit-mcp-instinct-cs-function-naming
+trigger: "When defining a function or method"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Cs Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- NamingConventions.functions: camelCase
+
+---
+id: revit-mcp-instinct-cs-constant-naming
+trigger: "When declaring a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Cs Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- NamingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: revit-mcp-instinct-import-style
+trigger: "When importing modules or namespaces"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Import Style
+
+## Action
+
+Use a mixed import style as appropriate for context
+
+## Evidence
+
+- importStyle: mixed
+
+---
+id: revit-mcp-instinct-export-style
+trigger: "When exporting modules or classes"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- exportStyle: named
+
+---
+id: revit-mcp-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Commit Format
+
+## Action
+
+Use a short, freeform message with no required prefix
+
+## Evidence
+
+- commits.type: freeform
+- commits.prefixes: []
+- Example: 'Fix TCP JSON message framing'
+
+---
+id: revit-mcp-instinct-commit-length
+trigger: "When composing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Commit Length
+
+## Action
+
+Keep the message concise, around 28 characters on average
+
+## Evidence
+
+- commits.averageLength: 28
+
+---
+id: revit-mcp-instinct-error-handling
+trigger: "When handling errors in code"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Error Handling
+
+## Action
+
+Use try-catch blocks for error handling
+
+## Evidence
+
+- errorHandling.style: try-catch
+
+---
+id: revit-mcp-instinct-no-custom-errors
+trigger: "When defining error handling logic"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct No Custom Errors
+
+## Action
+
+Do not create custom error classes
+
+## Evidence
+
+- errorHandling.customErrorClasses: false
+
+---
+id: revit-mcp-instinct-test-location
+trigger: "When adding tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Test Location
+
+## Action
+
+Place test files mixed with source files, not in a separate directory
+
+## Evidence
+
+- architecture.folderStructure.testLocation: mixed
+
+---
+id: revit-mcp-instinct-module-organization
+trigger: "When organizing code modules"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: hungpixi/revit-mcp
+---
+
+# Revit Mcp Instinct Module Organization
+
+## Action
+
+Organize modules by type
+
+## Evidence
+
+- architecture.moduleOrganization: type-based
+
