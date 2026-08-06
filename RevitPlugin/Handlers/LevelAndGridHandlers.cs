@@ -336,16 +336,12 @@ namespace RevitMCP.Handlers
             if (curve1 == null || curve2 == null)
                 return null;
 
-            // For simplicity, use midpoints or endpoints
-            // In real implementation, would use proper curve intersection
-            XYZ pt1 = curve1.GetEndPoint(0);
-            XYZ pt2 = curve1.GetEndPoint(1);
-            XYZ pt3 = curve2.GetEndPoint(0);
-            XYZ pt4 = curve2.GetEndPoint(1);
+            IntersectionResultArray intersections;
+            SetComparisonResult result = curve1.Intersect(curve2, out intersections);
+            if (result != SetComparisonResult.Overlap || intersections == null || intersections.Size == 0)
+                return null;
 
-            // Simple intersection approximation
-            // This would need proper geometric intersection in production
-            return new XYZ((pt1.X + pt2.X) / 2, (pt3.Y + pt4.Y) / 2, pt1.Z);
+            return intersections.get_Item(0).XYZPoint;
         }
     }
 
